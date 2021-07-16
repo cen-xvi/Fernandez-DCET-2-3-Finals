@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Dijkstra's Navigation</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="https://api.tiles.mapbox.com/mapbox-gl-js/v2.3.1/mapbox-gl.js"></script>
+    <link
+      href="https://api.tiles.mapbox.com/mapbox-gl-js/v2.3.1/mapbox-gl.css"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+      }
+
+      #map {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
+    <script>
+      mapboxgl.accessToken = "pk.eyJ1IjoiY2h5bWUiLCJhIjoiY2tyNjY1YjNlM2NsZDJubDN2MHY1OG81YSJ9.lbTvhq_ZBuJTRKV2QSY-dQ";
+      var map = new mapboxgl.Map({
+        container: "map",
+        style: "mapbox://styles/chyme/ckr66xj79023x17qu5xjrij2o",
+        center: [121.08717961022747, 14.610804718918642],
+        zoom: 15,
+      });
+
+      var canvas = map.getCanvasContainer();
+      var start = [121.08717961022747, 14.610804718918642];
+
+      function getRoute(end) {
+
+        var start = [121.08717961022747, 14.610804718918642];
+        var url =
+          "https://api.mapbox.com/directions/v5/mapbox/walking/" +
+          start[0] +
+          "," +
+          start[1] +
+          ";" +
+          end[0] +
+          "," +
+          end[1] +
+          "?steps=true&geometries=geojson&access_token=" +
+          mapboxgl.accessToken;
+
+        var req = new XMLHttpRequest();
+        req.open("GET", url, true);
+        req.onload = function () {
+          var json = JSON.parse(req.response);
+          var data = json.routes[0];
+          var route = data.geometry.coordinates;
+          var geojson = {
+            type: "Feature",
+            properties: {},
+            geometry: {
+              type: "LineString",
+              coordinates: route,
+            },
+          };
+          if (map.getSource("route")) {
+            map.getSource("route").setData(geojson);
+          } else {
+            map.addLayer({
+              id: "route",
+              type: "line",
+              source: {
+                type: "geojson",
+                data: {
+                  type: "Feature",
+                  properties: {},
+                  geometry: {
+                    type: "LineString",
+                    coordinates: geojson,
+                  },
+                },
+              },
+              layout: {
+                "line-join": "round",
+                "line-cap": "round",
+              },
+              paint: {
+                "line-color": "#3887be",
+                "line-width": 5,
+                "line-opacity": 0.75,
+              },
+            });
+          }
+        };
+        req.send();
+      }
+
+      map.on("load", function () {
+        getRoute(start);
+
+        map.addLayer({
+          id: "point",
+          type: "circle",
+          source: {
+            type: "geojson",
+            data: {
+              type: "FeatureCollection",
+              features: [
+                {
+                  type: "Feature",
+                  properties: {},
+                  geometry: {
+                    type: "Point",
+                    coordinates: start,
+                  },
+                },
+              ],
+            },
+          },
+          paint: {
+            "circle-radius": 10,
+            "circle-color": "#3887be",
+          },
+        });
+
+        map.on("click", function (e) {
+          var coordsObj = e.lngLat;
+          canvas.style.cursor = "";
+          var coords = Object.keys(coordsObj).map(function (key) {
+            return coordsObj[key];
+          });
+          console.log(coords);
+          var end = {
+            type: "FeatureCollection",
+            features: [
+              {
+                type: "Feature",
+                properties: {},
+                geometry: {
+                  type: "Point",
+                  coordinates: coords,
+                },
+              },
+            ],
+          };
+          if (map.getLayer("end")) {
+            map.getSource("end").setData(end);
+          } else {
+            map.addLayer({
+              id: "end",
+              type: "circle",
+              source: {
+                type: "geojson",
+                data: {
+                  type: "FeatureCollection",
+                  features: [
+                    {
+                      type: "Feature",
+                      properties: {},
+                      geometry: {
+                        type: "Point",
+                        coordinates: coords,
+                      },
+                    },
+                  ],
+                },
+              },
+              paint: {
+                "circle-radius": 10,
+                "circle-color": "#f30",
+              },
+            });
+          }
+          getRoute(coords);
+        });
+      });
+    </script>
+  </body>
+</html>
